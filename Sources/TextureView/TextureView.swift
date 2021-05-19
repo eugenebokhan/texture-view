@@ -241,13 +241,13 @@ public class TextureView: UIView {
 
     // MARK - Pipeline State Init
 
-    public static let vertexFunctionName = "vertexFunction"
-    public static let fragmentFunctionName = "fragmentFunction"
+    public static let vertexFunctionName = "textureViewVertex"
+    public static let fragmentFunctionName = "textureViewFragment"
 
     private static func renderStateWithLibrary(_ library: MTLLibrary,
                                                pixelFormat: MTLPixelFormat) throws -> MTLRenderPipelineState {
         let renderStateDescriptor = MTLRenderPipelineDescriptor()
-        renderStateDescriptor.label = "MTLTextureView"
+        renderStateDescriptor.label = "Texture View"
         renderStateDescriptor.vertexFunction = library.makeFunction(name: Self.vertexFunctionName)
         renderStateDescriptor.fragmentFunction = library.makeFunction(name: Self.fragmentFunctionName)
         renderStateDescriptor.colorAttachments[0].pixelFormat = pixelFormat

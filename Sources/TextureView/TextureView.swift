@@ -133,31 +133,31 @@ public class TextureView: UIView {
                                       / .init(textureSize.height)
         let normalizationValue = drawableAspectRatio / textureAspectRatio
 
-        let normlizedTextureWidth: Float
-        let normlizedTextureHeight: Float
+        let normalizedTextureWidth: Float
+        let normalizedTextureHeight: Float
 
         switch self.textureContentMode {
         case .resize:
-            normlizedTextureWidth = 1.0
-            normlizedTextureHeight = 1.0
+            normalizedTextureWidth = 1.0
+            normalizedTextureHeight = 1.0
         case .aspectFill:
-            normlizedTextureWidth = normalizationValue < 1.0
-                                                       ? 1.0 / normalizationValue
-                                                       : 1.0
-            normlizedTextureHeight = normalizationValue < 1.0
-                                                       ? 1.0
-                                                       : normalizationValue
+            normalizedTextureWidth = normalizationValue < 1.0
+                                                        ? 1.0 / normalizationValue
+                                                        : 1.0
+            normalizedTextureHeight = normalizationValue < 1.0
+                                                         ? 1.0
+                                                         : normalizationValue
         case .aspectFit:
-            normlizedTextureWidth = normalizationValue > 1.0
-                                                       ? 1 / normalizationValue
-                                                       : 1.0
-            normlizedTextureHeight = normalizationValue > 1.0
-                                                        ? 1.0
-                                                        : normalizationValue
+            normalizedTextureWidth = normalizationValue > 1.0
+                                                        ? 1 / normalizationValue
+                                                        : 1.0
+            normalizedTextureHeight = normalizationValue > 1.0
+                                                         ? 1.0
+                                                         : normalizationValue
         }
 
-        self.projectionMatrix[0][0] = normlizedTextureWidth
-        self.projectionMatrix[1][1] = normlizedTextureHeight
+        self.projectionMatrix[0][0] = normalizedTextureWidth
+        self.projectionMatrix[1][1] = normalizedTextureHeight
     }
 
     private func normlizedTextureSize(from textureSize: MTLSize) -> SIMD2<Float> {

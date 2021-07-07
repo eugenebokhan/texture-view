@@ -112,13 +112,10 @@ public class TextureView: UIView {
         self.layer.device = self.device
         self.layer.framebufferOnly = true
         self.layer.isOpaque = false
-        self.layer.maximumDrawableCount = 2
+        self.layer.maximumDrawableCount = 3
         
         self.renderPassDescriptor.colorAttachments[0].loadAction = .clear
-        self.renderPassDescriptor.colorAttachments[0].clearColor = MTLClearColor(red: 0,
-                                                                                 green: 0,
-                                                                                 blue: 0,
-                                                                                 alpha: 0)
+        self.renderPassDescriptor.colorAttachments[0].clearColor = .clear
         
         self.backgroundColor = .clear
     }

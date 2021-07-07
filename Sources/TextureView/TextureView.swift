@@ -60,11 +60,10 @@ public class TextureView: UIView {
     private let library: MTLLibrary
     private var renderPipelineState: MTLRenderPipelineState
     private let renderPassDescriptor = MTLRenderPassDescriptor()
-    private let semaphore = DispatchSemaphore(value: 2)
     private var projectionMatrix = matrix_identity_float4x4
 
     // MARK: - Life Cycle
-    
+
     public init(device: MTLDevice,
                 pixelFormat: MTLPixelFormat = .bgra8Unorm) throws {
         self.library = try device.makeDefaultLibrary(bundle: .module)
@@ -107,19 +106,18 @@ public class TextureView: UIView {
     }
 
     // MARK: - Setup
-    
+
     private func commonInit() {
         self.layer.device = self.device
         self.layer.framebufferOnly = true
         self.layer.isOpaque = false
-        self.layer.maximumDrawableCount = 3
-        
+
         self.renderPassDescriptor.colorAttachments[0].loadAction = .clear
         self.renderPassDescriptor.colorAttachments[0].clearColor = .clear
-        
+
         self.backgroundColor = .clear
     }
-    
+
     public func setPixelFormat(_ pixelFormat: MTLPixelFormat) throws {
         self.renderPipelineState = try Self.renderStateWithLibrary(self.library,
                                                                    pixelFormat: pixelFormat)
@@ -135,8 +133,8 @@ public class TextureView: UIView {
                                       / .init(textureSize.height)
         let normalizationValue = drawableAspectRatio / textureAspectRatio
 
-        var normlizedTextureWidth: Float
-        var normlizedTextureHeight: Float
+        let normlizedTextureWidth: Float
+        let normlizedTextureHeight: Float
 
         switch self.textureContentMode {
         case .resize:
@@ -176,7 +174,7 @@ public class TextureView: UIView {
         return .init(x: normlizedTextureWidth,
                      y: normlizedTextureHeight)
     }
-    
+
     // MARK: Draw
 
     /// Draw a texture

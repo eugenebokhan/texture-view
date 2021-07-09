@@ -111,7 +111,6 @@ public class TextureView: UIView {
     private func commonInit() {
         self.layer.device = self.device
         self.layer.framebufferOnly = true
-        self.layer.isOpaque = false
         self.layer.maximumDrawableCount = 3
         
         self.renderPassDescriptor.colorAttachments[0].loadAction = .clear

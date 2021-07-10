@@ -60,11 +60,10 @@ public class TextureView: UIView {
     private let library: MTLLibrary
     private var renderPipelineState: MTLRenderPipelineState
     private let renderPassDescriptor = MTLRenderPassDescriptor()
-    private let semaphore = DispatchSemaphore(value: 2)
     private var projectionMatrix = matrix_identity_float4x4
 
     // MARK: - Life Cycle
-    
+
     public init(device: MTLDevice,
                 pixelFormat: MTLPixelFormat = .bgra8Unorm) throws {
         self.library = try device.makeDefaultLibrary(bundle: .module)
@@ -107,18 +106,17 @@ public class TextureView: UIView {
     }
 
     // MARK: - Setup
-    
+
     private func commonInit() {
         self.layer.device = self.device
         self.layer.framebufferOnly = true
-        self.layer.maximumDrawableCount = 3
         
         self.renderPassDescriptor.colorAttachments[0].loadAction = .clear
         self.renderPassDescriptor.colorAttachments[0].clearColor = .clear
-        
+
         self.backgroundColor = .clear
     }
-    
+
     public func setPixelFormat(_ pixelFormat: MTLPixelFormat) throws {
         self.renderPipelineState = try Self.renderStateWithLibrary(self.library,
                                                                    pixelFormat: pixelFormat)
@@ -134,31 +132,31 @@ public class TextureView: UIView {
                                       / .init(textureSize.height)
         let normalizationValue = drawableAspectRatio / textureAspectRatio
 
-        var normlizedTextureWidth: Float
-        var normlizedTextureHeight: Float
+        let normalizedTextureWidth: Float
+        let normalizedTextureHeight: Float
 
         switch self.textureContentMode {
         case .resize:
-            normlizedTextureWidth = 1.0
-            normlizedTextureHeight = 1.0
+            normalizedTextureWidth = 1.0
+            normalizedTextureHeight = 1.0
         case .aspectFill:
-            normlizedTextureWidth = normalizationValue < 1.0
-                                                       ? 1.0 / normalizationValue
-                                                       : 1.0
-            normlizedTextureHeight = normalizationValue < 1.0
-                                                       ? 1.0
-                                                       : normalizationValue
+            normalizedTextureWidth = normalizationValue < 1.0
+                                                        ? 1.0 / normalizationValue
+                                                        : 1.0
+            normalizedTextureHeight = normalizationValue < 1.0
+                                                         ? 1.0
+                                                         : normalizationValue
         case .aspectFit:
-            normlizedTextureWidth = normalizationValue > 1.0
-                                                       ? 1 / normalizationValue
-                                                       : 1.0
-            normlizedTextureHeight = normalizationValue > 1.0
-                                                        ? 1.0
-                                                        : normalizationValue
+            normalizedTextureWidth = normalizationValue > 1.0
+                                                        ? 1 / normalizationValue
+                                                        : 1.0
+            normalizedTextureHeight = normalizationValue > 1.0
+                                                         ? 1.0
+                                                         : normalizationValue
         }
 
-        self.projectionMatrix[0][0] = normlizedTextureWidth
-        self.projectionMatrix[1][1] = normlizedTextureHeight
+        self.projectionMatrix[0][0] = normalizedTextureWidth
+        self.projectionMatrix[1][1] = normalizedTextureHeight
     }
 
     private func normlizedTextureSize(from textureSize: MTLSize) -> SIMD2<Float> {
@@ -175,7 +173,7 @@ public class TextureView: UIView {
         return .init(x: normlizedTextureWidth,
                      y: normlizedTextureHeight)
     }
-    
+
     // MARK: Draw
 
     /// Draw a texture

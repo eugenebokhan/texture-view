@@ -110,8 +110,7 @@ public class TextureView: UIView {
     private func commonInit() {
         self.layer.device = self.device
         self.layer.framebufferOnly = true
-        self.layer.isOpaque = false
-
+        
         self.renderPassDescriptor.colorAttachments[0].loadAction = .clear
         self.renderPassDescriptor.colorAttachments[0].clearColor = .clear
 
@@ -189,23 +188,27 @@ public class TextureView: UIView {
     public func draw(additionalRenderCommands: ((MTLRenderCommandEncoder) -> Void)? = nil,
                      in commandBuffer: MTLCommandBuffer,
                      fence: MTLFence? = nil) {
-        guard let texture = self.texture,
-              let drawable = self.layer.nextDrawable()
-        else { return }
+        // From https://developer.apple.com/documentation/quartzcore/cametallayer#3385893
+        // “The layer reuses a drawable only if it isn’t onscreen and there are no strong references to it.”
+        autoreleasepool {
+            guard let texture = self.texture,
+                  let drawable = self.layer.nextDrawable()
+            else { return }
 
-        self.renderPassDescriptor.colorAttachments[0].texture = drawable.texture
+            self.renderPassDescriptor.colorAttachments[0].texture = drawable.texture
 
-        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: self.renderPassDescriptor)
-        else { return }
+            guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: self.renderPassDescriptor)
+            else { return }
 
-        self.draw(texture: texture,
-                  in: drawable,
-                  additionalRenderCommands: additionalRenderCommands,
-                  using: renderEncoder,
-                  fence: fence)
-        renderEncoder.endEncoding()
+            self.draw(texture: texture,
+                      in: drawable,
+                      additionalRenderCommands: additionalRenderCommands,
+                      using: renderEncoder,
+                      fence: fence)
+            renderEncoder.endEncoding()
 
-        commandBuffer.present(drawable)
+            commandBuffer.present(drawable)
+        }
     }
 
     private func draw(texture: MTLTexture,

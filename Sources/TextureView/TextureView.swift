@@ -1,4 +1,6 @@
-import Alloy
+#if os(iOS) || targetEnvironment(macCatalyst)
+
+import MetalTools
 import simd
 
 @available(iOS 11.0, macCatalyst 10.15, *)
@@ -255,3 +257,5 @@ public class TextureView: UIView {
     }
 
 }
+
+#endif

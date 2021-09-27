@@ -9,16 +9,26 @@ let package = Package(
         .macOS(.v10_15)
     ],
     products: [
-        .library(name: "TextureView",
-                 targets: ["TextureView"]),
+        .library(
+            name: "TextureView",
+            targets: ["TextureView"]
+        ),
     ], dependencies: [
-        .package(name: "Alloy",
-                 url: "https://github.com/s1ddok/Alloy.git",
-                 .upToNextMajor(from: "0.17.0"))
+        .package(
+            url: "https://github.com/eugenebokhan/metal-tools.git",
+            .upToNextMajor(from: "1.0.0")
+        ),
     ],
     targets: [
-        .target(name: "TextureView",
-                dependencies: ["Alloy"],
-                resources: [.process("Shaders/Shaders.metal")])
+        .target(
+            name: "TextureView",
+            dependencies: [
+                .product(
+                    name: "MetalTools",
+                    package: "metal-tools"
+                ),
+            ],
+            resources: [.process("Shaders/Shaders.metal")]
+        )
     ]
 )

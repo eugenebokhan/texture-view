@@ -1,9 +1,9 @@
-import Alloy
+#if os(iOS) || targetEnvironment(macCatalyst)
+
+import MetalTools
 import simd
 
-@available(iOS 11.0, macCatalyst 10.15, *)
 @available(macOS, unavailable)
-@available(tvOS, unavailable)
 public class TextureView: UIView {
 
     // MARK: - Type Definitions
@@ -16,12 +16,8 @@ public class TextureView: UIView {
 
     public var texture: MTLTexture? = nil {
         didSet {
-            if let texture = self.texture,
-               oldValue == nil || (texture.width != oldValue!.width || texture.height != oldValue!.height) {
-                let textureSize = MTLSize(width: texture.width,
-                                          height: texture.height,
-                                          depth: 1)
-                self.recalculateProjectionMatrix(using: textureSize)
+            if let texture, texture.size != oldValue?.size {
+                self.recalculateProjectionMatrix(using: texture.size)
             }
         }
     }
@@ -50,9 +46,7 @@ public class TextureView: UIView {
         didSet {
             if let texture = self.texture,
                self.textureContentMode != oldValue {
-                self.recalculateProjectionMatrix(using: .init(width: texture.width,
-                                                              height: texture.height,
-                                                              depth: 1))
+                self.recalculateProjectionMatrix(using: texture.size)
             }
         }
     }
@@ -60,16 +54,19 @@ public class TextureView: UIView {
     private let library: MTLLibrary
     private var renderPipelineState: MTLRenderPipelineState
     private let renderPassDescriptor = MTLRenderPassDescriptor()
-    private let semaphore = DispatchSemaphore(value: 2)
-    private var projectionMatrix = matrix_identity_float4x4
+    private var textureTransform = matrix_identity_float3x3
 
     // MARK: - Life Cycle
-    
-    public init(device: MTLDevice,
-                pixelFormat: MTLPixelFormat = .bgra8Unorm) throws {
+
+    public init(
+        device: MTLDevice,
+        pixelFormat: MTLPixelFormat = .bgra8Unorm
+    ) throws {
         self.library = try device.makeDefaultLibrary(bundle: .module)
-        self.renderPipelineState = try Self.renderStateWithLibrary(self.library,
-                                                                   pixelFormat: pixelFormat)
+        self.renderPipelineState = try Self.renderStateWithLibrary(
+            self.library,
+            pixelFormat: pixelFormat
+        )
         super.init(frame: .zero)
         self.commonInit()
     }
@@ -77,8 +74,10 @@ public class TextureView: UIView {
     required init?(coder aDecoder: NSCoder) {
         guard let device = MTLCreateSystemDefaultDevice(),
               let library = try? device.makeDefaultLibrary(bundle: .module),
-              let renderPipelineState = try? Self.renderStateWithLibrary(library,
-                                                                         pixelFormat: .bgra8Unorm)
+              let renderPipelineState = try? Self.renderStateWithLibrary(
+                library,
+                pixelFormat: .bgra8Unorm
+              )
         else { return nil }
         self.library = library
         self.renderPipelineState = renderPipelineState
@@ -107,22 +106,22 @@ public class TextureView: UIView {
     }
 
     // MARK: - Setup
-    
+
     private func commonInit() {
         self.layer.device = self.device
         self.layer.framebufferOnly = true
-        self.layer.isOpaque = false
-        self.layer.maximumDrawableCount = 3
-        
+
         self.renderPassDescriptor.colorAttachments[0].loadAction = .clear
         self.renderPassDescriptor.colorAttachments[0].clearColor = .clear
-        
+
         self.backgroundColor = .clear
     }
-    
+
     public func setPixelFormat(_ pixelFormat: MTLPixelFormat) throws {
-        self.renderPipelineState = try Self.renderStateWithLibrary(self.library,
-                                                                   pixelFormat: pixelFormat)
+        self.renderPipelineState = try Self.renderStateWithLibrary(
+            self.library,
+            pixelFormat: pixelFormat
+        )
         self.layer.pixelFormat = pixelFormat
     }
 
@@ -135,31 +134,31 @@ public class TextureView: UIView {
                                       / .init(textureSize.height)
         let normalizationValue = drawableAspectRatio / textureAspectRatio
 
-        var normlizedTextureWidth: Float
-        var normlizedTextureHeight: Float
+        let normalizedTextureWidth: Float
+        let normalizedTextureHeight: Float
 
         switch self.textureContentMode {
         case .resize:
-            normlizedTextureWidth = 1.0
-            normlizedTextureHeight = 1.0
+            normalizedTextureWidth = 1.0
+            normalizedTextureHeight = 1.0
         case .aspectFill:
-            normlizedTextureWidth = normalizationValue < 1.0
-                                                       ? 1.0 / normalizationValue
-                                                       : 1.0
-            normlizedTextureHeight = normalizationValue < 1.0
-                                                       ? 1.0
-                                                       : normalizationValue
+            normalizedTextureWidth = normalizationValue < 1.0
+                                                        ? 1.0 / normalizationValue
+                                                        : 1.0
+            normalizedTextureHeight = normalizationValue < 1.0
+                                                         ? 1.0
+                                                         : normalizationValue
         case .aspectFit:
-            normlizedTextureWidth = normalizationValue > 1.0
-                                                       ? 1 / normalizationValue
-                                                       : 1.0
-            normlizedTextureHeight = normalizationValue > 1.0
-                                                        ? 1.0
-                                                        : normalizationValue
+            normalizedTextureWidth = normalizationValue > 1.0
+                                                        ? 1 / normalizationValue
+                                                        : 1.0
+            normalizedTextureHeight = normalizationValue > 1.0
+                                                         ? 1.0
+                                                         : normalizationValue
         }
 
-        self.projectionMatrix[0][0] = normlizedTextureWidth
-        self.projectionMatrix[1][1] = normlizedTextureHeight
+        self.textureTransform[0][0] = normalizedTextureWidth
+        self.textureTransform[1][1] = normalizedTextureHeight
     }
 
     private func normlizedTextureSize(from textureSize: MTLSize) -> SIMD2<Float> {
@@ -176,7 +175,7 @@ public class TextureView: UIView {
         return .init(x: normlizedTextureWidth,
                      y: normlizedTextureHeight)
     }
-    
+
     // MARK: Draw
 
     /// Draw a texture
@@ -186,28 +185,34 @@ public class TextureView: UIView {
     /// - Parameters:
     ///   - texture: texture to draw
     ///   - additionalRenderCommands: render commands to execute after texture draw.
-    ///   - commandBuffer: command buffer to put the work in.
     ///   - fence: metal fence.
-    public func draw(additionalRenderCommands: ((MTLRenderCommandEncoder) -> Void)? = nil,
-                     in commandBuffer: MTLCommandBuffer,
-                     fence: MTLFence? = nil) {
-        guard let texture = self.texture,
-              let drawable = self.layer.nextDrawable()
-        else { return }
+    ///   - commandBuffer: command buffer to put the work in.
+    public func draw(
+        additionalRenderCommands: ((MTLRenderCommandEncoder) -> Void)? = nil,
+        fence: MTLFence? = nil,
+        in commandBuffer: MTLCommandBuffer
+    ) {
+        // From https://developer.apple.com/documentation/quartzcore/cametallayer#3385893
+        // “The layer reuses a drawable only if it isn’t onscreen and there are no strong references to it.”
+        autoreleasepool {
+            guard let texture = self.texture,
+                  let drawable = self.layer.nextDrawable()
+            else { return }
 
-        self.renderPassDescriptor.colorAttachments[0].texture = drawable.texture
+            self.renderPassDescriptor.colorAttachments[0].texture = drawable.texture
 
-        guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: self.renderPassDescriptor)
-        else { return }
+            guard let renderEncoder = commandBuffer.makeRenderCommandEncoder(descriptor: self.renderPassDescriptor)
+            else { return }
 
-        self.draw(texture: texture,
-                  in: drawable,
-                  additionalRenderCommands: additionalRenderCommands,
-                  using: renderEncoder,
-                  fence: fence)
-        renderEncoder.endEncoding()
+            self.draw(texture: texture,
+                      in: drawable,
+                      additionalRenderCommands: additionalRenderCommands,
+                      using: renderEncoder,
+                      fence: fence)
+            renderEncoder.endEncoding()
 
-        commandBuffer.present(drawable)
+            commandBuffer.present(drawable)
+        }
     }
 
     private func draw(texture: MTLTexture,
@@ -215,23 +220,21 @@ public class TextureView: UIView {
                       additionalRenderCommands: ((MTLRenderCommandEncoder) -> Void)? = nil,
                       using renderEncoder: MTLRenderCommandEncoder,
                       fence: MTLFence? = nil) {
-        if let f = fence {
-            renderEncoder.waitForFence(f, before: .fragment)
+        if let fence {
+            renderEncoder.waitForFence(fence, before: .fragment)
         }
 
         renderEncoder.setCullMode(.none)
         renderEncoder.setRenderPipelineState(self.renderPipelineState)
 
-        renderEncoder.setVertexBytes(&self.projectionMatrix,
-                                     length: MemoryLayout<simd_float4x4>.stride,
-                                     index: 0)
+        renderEncoder.set(vertexValue: textureTransform, at: 0)
+        renderEncoder.setFragmentTextures(texture)
 
-        renderEncoder.setFragmentTexture(texture,
-                                         index: 0)
-
-        renderEncoder.drawPrimitives(type: .triangleStrip,
-                                     vertexStart: 0,
-                                     vertexCount: 4)
+        renderEncoder.drawPrimitives(
+            type: .triangleStrip,
+            vertexStart: 0,
+            vertexCount: 4
+        )
 
         additionalRenderCommands?(renderEncoder)
     }
@@ -254,3 +257,5 @@ public class TextureView: UIView {
     }
 
 }
+
+#endif
